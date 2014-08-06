@@ -14,10 +14,45 @@ $db001->query("INSERT INTO eindverbruiker_type_match (klantnr, naam, google_acti
                ON DUPLICATE KEY UPDATE naam=e.naam, google_activity=e.google_activity");
 
 
-$hoofActiviteitenRs = $dbDefinition->query("SELECT SUBSTR(`code`,1,6) as 'hoofddtype', waarde_english as 'en', waarde_dutch as 'nl', waarde_deutsch as 'de', waarde_french as 'fr', waarde_polish as 'pl', waarde_czech as 'cz', waarde_hungarian as 'hu', waarde_italian as 'it', waarde_portuguese as 'pt', waarde_spanish as 'es' FROM kenmerken_taal WHERE tabel='type'");
-$hoofActiviteiten = array();
-while($record = $hoofActiviteitenRs->fetch_assoc()){
-    $hoofActiviteiten[] = $record;
+// Load all possible hoofdactiviteiten in array
+$hoofdActiviteitenRs = $dbDefinition->query("SELECT
+                                                SUBSTR(`code`,1,6) as 'hoofddtype',
+                                                CONVERT(waarde_english USING utf8) as 'en',
+                                                CONVERT(waarde_dutch USING utf8) as 'nl',
+                                                CONVERT(waarde_deutsch USING utf8) as 'de',
+                                                CONVERT(waarde_french USING utf8) as 'fr',
+                                                CONVERT(waarde_polish USING utf8) as 'pl',
+                                                CONVERT(waarde_czech USING utf8) as 'cz',
+                                                CONVERT(waarde_hungarian USING utf8) as 'hu',
+                                                CONVERT(waarde_italian USING utf8) as 'it',
+                                                CONVERT(waarde_portuguese USING utf8) as 'pt',
+                                                CONVERT(waarde_spanish USING utf8) as 'es'
+                                              FROM kenmerken_taal
+                                              WHERE tabel='type'");
+$hoofdActiviteitenLanguages = array();
+while($record = $hoofdActiviteitenRs->fetch_assoc()){
+    $hoofdtype = array_shift($record);
+
+    // loop all translations and put them in seperate dataframe
+    foreach($record as $key=>$value){
+        // convert to ascii to generate soundex, metaphone and finally the levensthein distance
+        $ascii =  iconv('UTF-8', 'ASCII//TRANSLIT', $value);
+        $cleaned = trim(preg_replace('/\s+/', ' ',preg_replace('/[^a-z ]+/is', ' ', strtolower($ascii))));
+        $soundex =  soundex($cleaned);
+        $metaphone =  metaphone($cleaned);
+
+        $hoofdActiviteitenLanguages[$key][$hoofdtype] = array(
+            'hoofdtype' => $hoofdtype,
+            'value' => $value,
+            'ascii' => $ascii,
+            'cleaned' => $cleaned,
+            'soundex' => $soundex,
+            'metaphone' => $metaphone,
+        );
+    }
 }
 
-print_r($hoofActiviteiten);
+
+echo '<pre>';
+
+print_r($hoofdActiviteitenLanguages);
