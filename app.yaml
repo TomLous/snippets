@@ -5,5 +5,5 @@ api_version: 1
 threadsafe: true
 
 handlers:
-- url: .*
-  script: main.php
+- url: /google_activity_matcher/match
+  script: google_activity_matcher/match.php
