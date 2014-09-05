@@ -7,3 +7,6 @@ threadsafe: true
 handlers:
 - url: /google_activity_matcher/match
   script: google_activity_matcher/match.php
+
+- url: /geocoder/geocoder
+  script: geocoder/geocoder.php5
