@@ -44,11 +44,19 @@ while ($remaining > 0 && !$finished) {
         // if there is a connection however....
     } else {
         // retrieve all ungeocoded addresses, or ones with a bad accuracy
+//        $queryUnGeocodedOutlets = "SELECT klantnr, b_huisnr, b_adres, b_woonplaats, b_latitude, b_longitude, b_accuracy, land, status
+//              FROM eindverbruiker
+//              WHERE (b_latitude IS NULL OR b_accuracy < {$accuracyTreshold})
+//              AND status > 0
+//              ORDER BY b_accuracy ASC, klantnr ASC
+//              LIMIT 0, {$remaining}";
+
+
         $queryUnGeocodedOutlets = "SELECT klantnr, b_huisnr, b_adres, b_woonplaats, b_latitude, b_longitude, b_accuracy, land, status
               FROM eindverbruiker
-              WHERE (b_latitude IS NULL OR b_accuracy < {$accuracyTreshold})
+              WHERE new_lat IS NULL AND b_latitude IS NOT NULL
               AND status > 0
-              ORDER BY b_accuracy ASC, klantnr ASC
+              ORDER BY klantnr ASC
               LIMIT 0, {$remaining}";
 
         // open a resultset, and retrieve all outlets (quickly, so locking won't occur for too long)
@@ -71,16 +79,17 @@ while ($remaining > 0 && !$finished) {
 // loop outlets to geocode
 foreach ($ouletsToGeocode as $outletObj) {
     // create a API request
-    $addressString = implode(' ', array($outletObj->b_adres, $outletObj->b_huisnr, $outletObj->b_woonplaats, $outletObj->land));
+    $addressString = str_replace("/","",implode(' ', array($outletObj->b_adres, $outletObj->b_huisnr, $outletObj->b_woonplaats, $outletObj->land)));
     $geocodeFarmForwardCodingUrl = GEOCODEFARM_API_FORWARD_CODING_URL . urlencode($addressString) . '/';
 
     // retrieve & parse data
     $data = file_get_contents($geocodeFarmForwardCodingUrl);
+    if(!$data){
+        throw new Exception("Could not open URL ". $geocodeFarmForwardCodingUrl);
+    }
+
     $jsonResult = json_decode($data, true);
     $jsonResult = $jsonResult['geocoding_results'];
-
-
-//    print_r($jsonResult);
 
     // if some error occured (over max, invalid api key, etc etc: QUIT)
     if ($jsonResult['STATUS']['access'] != 'KEY_VALID, ACCESS_GRANTED') {
@@ -99,8 +108,10 @@ foreach ($ouletsToGeocode as $outletObj) {
 // loop outlets that were succesfully geocoded
 foreach ($ouletsGeocoded as $outletObj) {
 
+//    print_r($outletObj);
+
     // translage geocodefarm accuracy to DO accuracy
-    $accuracy = $ouletsGeocoded->geoCodeFarmData['ADDRESS']['accuracy'];
+    $accuracy = $outletObj->geoCodeFarmData['ADDRESS']['accuracy'];
     $doAccuracy = 0;
     switch ($accuracy) {
         case 'VERY ACCURATE':
@@ -136,6 +147,7 @@ foreach ($ouletsNotGeocoded as $outletObj) {
 }
 
 
+//print_r($updateOutletParameters);
 
 // loop queries
 foreach($updateOutletParameters as $dbName => $updateParameters){
