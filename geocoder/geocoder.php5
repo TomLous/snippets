@@ -128,15 +128,19 @@ foreach ($ouletsGeocoded as $outletObj) {
             break;
     }
 
-    // create update params
-    $updateOutletParameters[$outletObj->fromDB][] = array(
-        'latitude' => $outletObj->geoCodeFarmData['COORDINATES']['latitude'],
-        'longitude' => $outletObj->geoCodeFarmData['COORDINATES']['longitude'],
-        'accuracy' => $doAccuracy,
-        'klantnr' => $outletObj->klantnr);
+    // only when new lat/long is better then previous one
+    if($outletObj->b_accuracy <=  $doAccuracy || !$outletObj->b_latitude ){
+
+        // create update params
+        $updateOutletParameters[$outletObj->fromDB][] = array(
+            'latitude' => $outletObj->geoCodeFarmData['COORDINATES']['latitude'],
+            'longitude' => $outletObj->geoCodeFarmData['COORDINATES']['longitude'],
+            'accuracy' => $doAccuracy,
+            'klantnr' => $outletObj->klantnr);
+    }
 }
 
-// loop outlets that were succesfully geocoded
+// loop outlets that were not  geocoded
 foreach ($ouletsNotGeocoded as $outletObj) {
     // create update params
     $updateOutletParameters[$outletObj->fromDB][] = array(
