@@ -1,4 +1,3 @@
-#!/usr/local/bin/php
 <?php
 /**
  * @author      Tom Lous <tomlous@gmail.com>
@@ -44,26 +43,27 @@ while ($remaining > 0 && !$finished) {
         // if there is a connection however....
     } else {
         // retrieve all ungeocoded addresses, or ones with a bad accuracy
-//        $queryUnGeocodedOutlets = "SELECT klantnr, b_huisnr, b_adres, b_woonplaats, b_latitude, b_longitude, b_accuracy, land, status
-//              FROM eindverbruiker
-//              WHERE (b_latitude IS NULL OR b_accuracy < {$accuracyTreshold})
-//              AND status > 0
-//              ORDER BY b_accuracy ASC, klantnr ASC
-//              LIMIT 0, {$remaining}";
-
-
         $queryUnGeocodedOutlets = "SELECT klantnr, b_huisnr, b_adres, b_woonplaats, b_latitude, b_longitude, b_accuracy, land, status
               FROM eindverbruiker
-              WHERE new_lat IS NULL AND b_latitude IS NOT NULL
+              WHERE (b_latitude IS NULL OR b_accuracy < {$accuracyTreshold})
               AND status > 0
-              ORDER BY klantnr ASC
+              ORDER BY b_accuracy ASC, klantnr ASC
               LIMIT 0, {$remaining}";
+
+
+//        $queryUnGeocodedOutlets = "SELECT klantnr, b_huisnr, b_adres, b_woonplaats, b_latitude, b_longitude, b_accuracy, land, status
+//              FROM eindverbruiker
+//              WHERE new_lat IS NULL AND b_latitude IS NOT NULL
+//              AND status > 0
+//              ORDER BY klantnr ASC
+//              LIMIT 0, {$remaining}";
 
         // open a resultset, and retrieve all outlets (quickly, so locking won't occur for too long)
         $resultSet = $mysqli->query($queryUnGeocodedOutlets);
 
         while ($outletObj = $resultSet->fetch_object()) {
             $outletObj->fromDB = $currentDB;
+            $outletObj->b_huisnr_clean = cleanHuisnr($outletObj->b_huisnr);
             $ouletsToGeocode[] = $outletObj;
             $remaining--;
         }
@@ -79,7 +79,7 @@ while ($remaining > 0 && !$finished) {
 // loop outlets to geocode
 foreach ($ouletsToGeocode as $outletObj) {
     // create a API request
-    $addressString = str_replace("/","",implode(' ', array($outletObj->b_adres, $outletObj->b_huisnr, $outletObj->b_woonplaats, $outletObj->land)));
+    $addressString = str_replace("/","",implode(' ', array($outletObj->b_adres, $outletObj->b_huisnr_clean, $outletObj->b_woonplaats, $outletObj->land)));
     $geocodeFarmForwardCodingUrl = GEOCODEFARM_API_FORWARD_CODING_URL . urlencode($addressString) . '/';
 
     // retrieve & parse data
@@ -153,8 +153,8 @@ foreach ($ouletsNotGeocoded as $outletObj) {
 foreach($updateOutletParameters as $dbName => $updateParameters){
     $mysqli = connectToDB($dbName);
 
-//    $updateOutletQuery = "UPDATE eindverbruiker SET b_latitude=?, b_longitude=?, b_accuracy=? WHERE klantnr=?";
-    $updateOutletQuery = "UPDATE eindverbruiker SET new_lat=?, new_long=?, new_acc=? WHERE klantnr=?";
+    $updateOutletQuery = "UPDATE eindverbruiker SET b_latitude=?, b_longitude=?, b_accuracy=? WHERE klantnr=?";
+//    $updateOutletQuery = "UPDATE eindverbruiker SET new_lat=?, new_long=?, new_acc=? WHERE klantnr=?";
 
     $updateOutletStatement = $mysqli->prepare($updateOutletQuery);
     $updateOutletStatement->bind_param('ddis', $latitude, $longitude, $accuracy, $klantnr); // use string for klantnr, evethough most new publics use int (i)
@@ -172,6 +172,43 @@ foreach($updateOutletParameters as $dbName => $updateParameters){
     $mysqli->close();
 }
 
+
+/**
+ * Functions
+ */
+
+function cleanHuisnr($huisnr){
+    $find =array(
+        '`(t/o|boven|naast|nabij)`is', // remove aanduiding
+        '`(\d+)-?\s*(hs|bg|ong|bis|bov|sout|werf|sous|magazijn|lnks|wink|wkl|huis|waterzijde|achter|keld|I{1,3})`is', // remove verdieping
+        '`\b(Noordzijde|Zuidzijde|Oostzijde|westzijde|NZ|ZZ|OZ|WZ|N\.Z\.|Z\.Z\.|O\.Z\.|W\.Z\.|noord|oost|zuid|west|no|nw|zo|zw|noo|zui|nrd)\b`is', // remove richting
+        '`^(0|on|niet|-|x).*$`is', // clean empty
+        '`(^\d+)[\s\-]*([a-z]{1,2})(\s|$)`is', // bv 1-a
+        '`(\d+(\s*[a-z]+)?)\s*(-|t.m)\s*\d+(\s*[a-z]+)?`is', // bv 42-44,
+        '`^(\d+\w*).*$`is', // bv alles achter 1a,
+
+
+    );
+
+    $replace = array(
+        '', // t\o
+        '\\1', // verdieping aanduidingen
+        '', // remove richting
+        '',
+        '\\1\\2', // 1-a -> 1a
+        '\\1', // 42-44 -> 42
+        '\\1',
+
+    );
+
+    $huisnr = preg_replace($find, $replace, $huisnr);
+
+    $huisnr =  trim($huisnr);
+
+    $huisnr = $huisnr == 0 ? '' : $huisnr;
+
+    return $huisnr;
+}
 
 
 

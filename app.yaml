@@ -10,3 +10,8 @@ handlers:
 
 - url: /geocoder/geocoder
   script: geocoder/geocoder.php5
+
+
+- url: /geocoder/test
+  script: geocoder/test.php5
+
