@@ -61,7 +61,7 @@ while($row = $rsSchedule->fetch_assoc()){
         <tr>
             <?php foreach($row as $cell){ ?>
                 <td><?php print $cell;?></td>
-            <? } ?>
+            <?php } ?>
             <td><a href="deleteRegression.php?id=<?php print $row['id'];?>">delete</a></td>
         </tr>
     <?}?>
