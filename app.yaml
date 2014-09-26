@@ -15,3 +15,16 @@ handlers:
 - url: /geocoder/test
   script: geocoder/test.php5
 
+- url: /regression_scheduler
+  script: regression_scheduler/index.php
+
+- url: /submitRegression.php
+  script: regression_scheduler/submitRegression.php
+
+- url: /deleteRegression.php
+  script: regression_scheduler/deleteRegression.php
+
+
+- url: /assets/css
+  static_dir: assets/css
+

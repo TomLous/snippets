@@ -151,7 +151,7 @@ foreach ($ouletsNotGeocoded as $outletObj) {
 }
 
 
-//print_r($updateOutletParameters);
+print_r($updateOutletParameters);
 
 // loop queries
 foreach($updateOutletParameters as $dbName => $updateParameters){
