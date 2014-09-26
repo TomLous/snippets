@@ -42,12 +42,12 @@ while($row = $rsSchedule->fetch_assoc()){
 <h2>Run a regression</h2>
 <p style="height: 40px"></p>
 <form method="post" action="submitRegression.php">
-    <input type="hidden" value="<?=md5(time().rand(0,1000));?>" name="key">
+    <input type="hidden" value="<?php print md5(time().rand(0,1000));?>" name="key">
     <label for="dbname">database</label>
     <select name="dbname" id="dbname" required="required">
         <option disabled selected>
         <?php foreach($possibleDatabases as $dbName){ ?>
-        <option value="<?=$dbName;?>"><?=$dbName;?></option>
+        <option value="<?php print $dbName;?>"><?php print $dbName;?></option>
         <?}?>
     </select>
 
@@ -60,17 +60,12 @@ while($row = $rsSchedule->fetch_assoc()){
     <?php foreach($schedule as $row){ ?>
         <tr>
             <?php foreach($row as $cell){ ?>
-                <td><?=$cell;?></td>
+                <td><?php print $cell;?></td>
             <? } ?>
-            <td><a href="deleteRegression.php?id=<?=$row['id'];?>">delete</a></td>
+            <td><a href="deleteRegression.php?id=<?php print $row['id'];?>">delete</a></td>
         </tr>
     <?}?>
 </table>
-<pre>
-<?php
-//print_r($schedule);
-?>
-</pre>
 </body>
 
 </html>
