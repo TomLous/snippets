@@ -42,7 +42,7 @@ while($row = $rsSchedule->fetch_assoc()){
 <h2>Run a regression</h2>
 <p style="height: 40px"></p>
 <form method="post" action="submitRegression.php">
-    <input type="hidden" value="<?php print md5(time().rand(0,1000));?>" name="key">
+    <input type="hidden" value="<?php print md5(time().rand(0,1000));?>" name="hash">
     <label for="dbname">database</label>
     <select name="dbname" id="dbname" required="required">
         <option disabled selected>
