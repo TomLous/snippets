@@ -48,7 +48,7 @@ while($row = $rsSchedule->fetch_assoc()){
         <option disabled selected>
         <?php foreach($possibleDatabases as $dbName){ ?>
         <option value="<?php print $dbName;?>"><?php print $dbName;?></option>
-        <?}?>
+        <?php } ?>
     </select>
 
     <input type="submit" value="Run">
