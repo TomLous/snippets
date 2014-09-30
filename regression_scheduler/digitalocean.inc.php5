@@ -150,11 +150,13 @@ function checkOrCreateDroplet()
 //            print_r($resultData);
 
             if ($resultData['droplet'] && $resultData['droplet']['id']) {
-                $rstudioDropletInfo = $resultData['droplet'];
+                $rstudioDropletInfo = getDropletInfo();
+//                $rstudioDropletInfo = $resultData['droplet'];
                 $rstudioDropletId = $rstudioDropletInfo['id'];
                 $rstudioDropletIp = $rstudioDropletInfo['networks']['v4'][0]['ip_address'];
                 $success = true;
                 $rstudioDropletStatus = $rstudioDropletIp?'on':'processing';
+//                if($rstudioDropletStatus )
             }
         }
 

@@ -28,6 +28,12 @@ $rsDropletState = $mysqli->query($queryDropletState);
 $dropletState = $rsDropletState->fetch_object();
 
 
+if($dropletState->status == 'processing'){
+    checkOrCreateDroplet();
+    $rsDropletState = $mysqli->query($queryDropletState);
+    $dropletState = $rsDropletState->fetch_object();
+}
+
 ?>
 <!DOCTYPE html>
 <html>
@@ -66,6 +72,7 @@ $dropletState = $rsDropletState->fetch_object();
             <?php foreach($row as $cell){ ?>
                 <td><?php print $cell;?></td>
             <?php } ?>
+            <td><a href="http://<?php print $dropletState->ip;?>/regressie-results/runlog.<?php print $row['dbname'];?>.<?php print $row['hash'];?>.txt" target="_blank">show log</a></td>
             <td><a href="deleteRegression.php5?id=<?php print $row['id'];?>">delete</a></td>
         </tr>
     <?php } ?>
