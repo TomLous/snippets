@@ -5,7 +5,7 @@
  * @package     package
  * Datetime:     26/09/14 14:44
  */
-include_once('inc.php');
+include_once('inc.php5');
 
 $id = $mysqli->escape_string($_GET['id']);
 

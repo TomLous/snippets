@@ -6,7 +6,7 @@
  * Datetime:     26/09/14 14:32
  */
 
-include_once('inc.php');
+include_once('inc.php5');
 $queryPossibleDatabases = "SELECT `table_schema` AS db_name FROM `information_schema`.`tables` WHERE `table_name` = 'reg_kbns'";
 $rsPossibleDatabases = $mysqli->query($queryPossibleDatabases);
 
@@ -22,6 +22,10 @@ $schedule = array();
 while($row = $rsSchedule->fetch_assoc()){
     $schedule[] = $row;
 }
+
+$queryDropletState = "SELECT * FROM `reg_scheduler`.`droplet`";
+$rsDropletState = $mysqli->query($queryDropletState);
+$dropletState = $rsDropletState->fetch_object();
 
 
 ?>
@@ -41,7 +45,7 @@ while($row = $rsSchedule->fetch_assoc()){
 <body>
 <h2>Run a regression</h2>
 <p style="height: 40px"></p>
-<form method="post" action="submitRegression.php">
+<form method="post" action="submitRegression.php5">
     <input type="hidden" value="<?php print md5(time().rand(0,1000));?>" name="hash">
     <label for="dbname">database</label>
     <select name="dbname" id="dbname" required="required">
@@ -62,10 +66,26 @@ while($row = $rsSchedule->fetch_assoc()){
             <?php foreach($row as $cell){ ?>
                 <td><?php print $cell;?></td>
             <?php } ?>
-            <td><a href="deleteRegression.php?id=<?php print $row['id'];?>">delete</a></td>
+            <td><a href="deleteRegression.php5?id=<?php print $row['id'];?>">delete</a></td>
         </tr>
     <?php } ?>
 </table>
+
+<p style="height: 40px"></p>
+<hr>
+<h3>Digital Ocean Droplet status</h3>
+
+<table>
+    <tr><td>name</td><td><?php print $dropletState->name;?></td></tr>
+    <tr><td>droplet</td><td><a href="https://cloud.digitalocean.com/droplets/<?php print $dropletState->id;?>"><?php print $dropletState->id;?></a></td></tr>
+    <tr><td>status</td><td><?php print $dropletState->status;?></td></tr>
+    <tr><td>ip</td><td><a href="http://<?php print $dropletState->ip;?>:8787/"><?php print $dropletState->ip;?></a></td></tr>
+</table>
+<p style="height: 40px"></p>
+<h3>Digital Ocean Droplet acties (handmatig)</h3>
+<br />
+<a href="startDigitalocean.php5">Start Server</a><br />
+<a href="stopDigitalocean.php5">Stop (&destroy) Server</a>
 </body>
 
 </html>

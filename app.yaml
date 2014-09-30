@@ -16,13 +16,19 @@ handlers:
   script: geocoder/test.php5
 
 - url: /regression_scheduler
-  script: regression_scheduler/index.php
+  script: regression_scheduler/index.php5
 
-- url: /submitRegression.php
-  script: regression_scheduler/submitRegression.php
+- url: /submitRegression.php5
+  script: regression_scheduler/submitRegression.php5
 
-- url: /deleteRegression.php
-  script: regression_scheduler/deleteRegression.php
+- url: /deleteRegression.php5
+  script: regression_scheduler/deleteRegression.php5
+
+- url: /startDigitalocean.php5
+  script: regression_scheduler/startDigitalocean.php5
+
+- url: /stopDigitalocean.php5
+  script: regression_scheduler/stopDigitalocean.php5
 
 
 - url: /assets/css
