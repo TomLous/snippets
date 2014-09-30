@@ -42,9 +42,9 @@ print '<h2>Create:</h2>';
 print_r($resultData);*/
 
 ?>
-<br />
-<br />
-Also check <a href="https://cloud.digitalocean.com/images">snapshot</a> to see if you can delete som old snapshots
+<!--<br />-->
+<!--<br />-->
+<!--Also check <a href="https://cloud.digitalocean.com/images">snapshot</a> to see if you can delete som old snapshots-->
 <br />
 <br />
 <a href="<?php print $_SERVER['HTTP_REFERER'];?>" >&raquo; terug</a>

@@ -168,7 +168,9 @@ function snapshotCleanup(){
     $mostRecent = array_shift($matchedImages);
 
     foreach($matchedImages as $matchedImage){
-        print 'delete '.$matchedImage['name'];
+
+        doDigitalOceanRequest('images/' . $matchedImage['id'] , 'DELETE');
+//        print 'delete '.$matchedImage['name'];
         $numCleanedup++;
     }
 

@@ -36,6 +36,16 @@ if($dropletState->status == 'processing'){
     $dropletState = $rsDropletState->fetch_object();
 }
 
+
+$lastrun =  (int) @file_get_contents('http://'.$dropletState->ip.'/lastrun.potentshell');
+
+$diff = 0;
+
+if($lastrun > 0){
+   $endtime = $lastrun + $powerofftime;
+   $diff =  $endtime - time();
+}
+
 ?>
 <!DOCTYPE html>
 <html>
@@ -98,12 +108,13 @@ if($dropletState->status == 'processing'){
     <tr><td>droplet</td><td><a href="https://cloud.digitalocean.com/droplets/<?php print $dropletState->id;?>" target="_blank"><?php print $dropletState->id;?></a></td></tr>
     <tr><td>status</td><td><?php print $dropletState->status;?></td></tr>
     <tr><td>ip</td><td><a href="http://<?php print $dropletState->ip;?>:8787/" target="_blank"><?php print $dropletState->ip;?></a></td></tr>
+    <tr><td>shutdown in </td><td><?php print gmdate("H \h: i \m", $diff);?></td></tr>
 </table>
 <p style="height: 40px"></p>
 <h3>Digital Ocean Droplet acties (handmatig)</h3>
 <br />
 <a href="startDigitalocean.php5">Start Server</a><br />
-<a href="snapshotDigitalocean.php5">Power off, Snapshot Server, Destory</a> (takes a long while, please don't close window)<br />
+<a href="snapshotDigitalocean.php5">Power off, Snapshot Server, Destroy</a> (takes a long while (5-7 min), please don't close window)<br />
 <!--<a href="stopDigitalocean.php5">Stop (&destroy) Server</a>-->
 </body>
 
