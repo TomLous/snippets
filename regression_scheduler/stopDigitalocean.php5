@@ -5,12 +5,13 @@
  * @package     package
  * Datetime:     30/09/14 11:50
  */
+exit();
 
 include_once('inc.php5');
 include_once('digitalocean.inc.php5');
 
 
-$dropletDestroyed = destroyDroplet();
+//$dropletDestroyed = destroyDroplet();
 
 print "Server stopped & destoyed? ";
 print $dropletDestroyed?'Y':'N';

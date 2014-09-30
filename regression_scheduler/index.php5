@@ -7,6 +7,7 @@
  */
 
 include_once('inc.php5');
+include_once('digitalocean.inc.php5');
 $queryPossibleDatabases = "SELECT `table_schema` AS db_name FROM `information_schema`.`tables` WHERE `table_name` = 'reg_kbns'";
 $rsPossibleDatabases = $mysqli->query($queryPossibleDatabases);
 
@@ -23,6 +24,7 @@ while($row = $rsSchedule->fetch_assoc()){
     $schedule[] = $row;
 }
 
+checkDroplet();
 $queryDropletState = "SELECT * FROM `reg_scheduler`.`droplet`";
 $rsDropletState = $mysqli->query($queryDropletState);
 $dropletState = $rsDropletState->fetch_object();
@@ -67,6 +69,15 @@ if($dropletState->status == 'processing'){
 </p>
 <hr>
 <table>
+    <tr>
+        <th>id</th>
+        <th>db</th>
+        <th>hash</th>
+        <th>planned</th>
+        <th>status</th>
+        <th>log</th>
+        <th>action</th>
+    </tr>
     <?php foreach($schedule as $row){ ?>
         <tr>
             <?php foreach($row as $cell){ ?>
@@ -84,15 +95,16 @@ if($dropletState->status == 'processing'){
 
 <table>
     <tr><td>name</td><td><?php print $dropletState->name;?></td></tr>
-    <tr><td>droplet</td><td><a href="https://cloud.digitalocean.com/droplets/<?php print $dropletState->id;?>"><?php print $dropletState->id;?></a></td></tr>
+    <tr><td>droplet</td><td><a href="https://cloud.digitalocean.com/droplets/<?php print $dropletState->id;?>" target="_blank"><?php print $dropletState->id;?></a></td></tr>
     <tr><td>status</td><td><?php print $dropletState->status;?></td></tr>
-    <tr><td>ip</td><td><a href="http://<?php print $dropletState->ip;?>:8787/"><?php print $dropletState->ip;?></a></td></tr>
+    <tr><td>ip</td><td><a href="http://<?php print $dropletState->ip;?>:8787/" target="_blank"><?php print $dropletState->ip;?></a></td></tr>
 </table>
 <p style="height: 40px"></p>
 <h3>Digital Ocean Droplet acties (handmatig)</h3>
 <br />
 <a href="startDigitalocean.php5">Start Server</a><br />
-<a href="stopDigitalocean.php5">Stop (&destroy) Server</a>
+<a href="snapshotDigitalocean.php5">Power off, Snapshot Server, Destory</a> (takes a long while, please don't close window)<br />
+<!--<a href="stopDigitalocean.php5">Stop (&destroy) Server</a>-->
 </body>
 
 </html>

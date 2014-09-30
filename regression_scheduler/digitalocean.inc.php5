@@ -109,17 +109,84 @@ function turnOnDroplet($dropletId)
 
 }
 
-function destroyDroplet(){
+function turnOffDroplet($dropletId)
+{
+
+    $data = array(
+        'type' => 'power_off',
+    );
+
+    $resultData = doDigitalOceanRequest('/droplets/' . $dropletId . '/actions', 'POST', $data);
+
+    return $resultData;
+
+}
+
+function snapshotDroplet(){
     $success = true;
     $rstudioDropletId = null;
 
     $rstudioDropletInfo = getDropletInfo();
 
+    if ($rstudioDropletInfo) {
+        $success = true;
+        $rstudioDropletId = $rstudioDropletInfo['id'];
+
+        turnOffDroplet($rstudioDropletId);
+        sleep(30);
+
+        $action = array(
+            'type' => 'snapshot',
+            'name' => DROPLET_NAME . " ".  date("YmdHis")
+        );
+
+        doDigitalOceanRequest('droplets/' . $rstudioDropletId .'/actions' , 'POST', $action);
+
+        global $mysqli;
+        $updateQuery = "UPDATE `reg_scheduler`.`droplet`  SET `id`=$rstudioDropletId, `name`='".DROPLET_NAME."', `status`='off', `ip`=NULL;";
+        $mysqli->query($updateQuery);
+    }
+
+    return $success;
+}
+
+function snapshotCleanup(){
+    $numCleanedup = 0;
+
+    $matchedImages = array();
+
+    $imageResult = doDigitalOceanRequest('images');
+    foreach ($imageResult['images'] as $image) {
+        if (preg_match("`^" . DROPLET_NAME . "`is", $image['name'])) {
+            $matchedImages[$image['created_at']] = $image;
+        }
+    }
+
+    krsort($matchedImages);
+    reset($matchedImages);
+
+    $mostRecent = array_shift($matchedImages);
+
+    foreach($matchedImages as $matchedImage){
+        print 'delete '.$matchedImage['name'];
+        $numCleanedup++;
+    }
+
+    return $numCleanedup;
+}
+
+function destroyDroplet(){
+    $success = false;
+    $rstudioDropletId = null;
+
+    $rstudioDropletInfo = getDropletInfo();
+
+
 
     if ($rstudioDropletInfo) {
         $rstudioDropletId = $rstudioDropletInfo['id'];
 
-        doDigitalOceanRequest('/droplets/' . $rstudioDropletId , 'DELETE');
+        doDigitalOceanRequest('droplets/' . $rstudioDropletId , 'DELETE');
 
         global $mysqli;
         $updateQuery = "UPDATE `reg_scheduler`.`droplet`  SET `id`=$rstudioDropletId, `name`='".DROPLET_NAME."', `status`='archived', `ip`=NULL;";
@@ -127,6 +194,29 @@ function destroyDroplet(){
     }
 
     return $success;
+}
+
+function checkDroplet(){
+    $rstudioDropletInfo = getDropletInfo();
+    global $mysqli;
+
+    if ($rstudioDropletInfo) {
+        $rstudioDropletId = $rstudioDropletInfo['id'];
+
+
+        $rstudioDropletStatus = $rstudioDropletInfo['status'];
+
+        $rstudioDropletIp = $rstudioDropletInfo['networks']['v4'][0]['ip_address'];
+
+
+
+        $updateQuery = "UPDATE `reg_scheduler`.`droplet`  SET `id`=$rstudioDropletId, `name`='".DROPLET_NAME."', `status`='$rstudioDropletStatus', `ip`='$rstudioDropletIp';";
+        $mysqli->query($updateQuery);
+    }else{
+        $updateQuery = "UPDATE `reg_scheduler`.`droplet`  SET `id`=NULL, `name`='".DROPLET_NAME."', `status`='archived', `ip`=NULL;";
+        $mysqli->query($updateQuery);
+    }
+
 }
 
 
