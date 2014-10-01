@@ -36,8 +36,10 @@ if($dropletState->status == 'processing'){
     $dropletState = $rsDropletState->fetch_object();
 }
 
+$url = 'http://'.$dropletState->ip.'/lastrun.potentshell';
+$lastrun = 0;
+$lastrun =  (int) @file_get_contents($url);
 
-$lastrun =  (int) @file_get_contents('http://'.$dropletState->ip.'/lastrun.potentshell');
 
 $diff = 0;
 
@@ -111,11 +113,14 @@ if($lastrun > 0){
     <tr><td>shutdown in </td><td><?php print gmdate("H \h: i \m", $diff);?></td></tr>
 </table>
 <p style="height: 40px"></p>
-<h3>Digital Ocean Droplet acties (handmatig)</h3>
+<h3>Digital Ocean Droplet acties (manual)</h3>
+<br />
+<i>Only use these if you know what you are doing :-)</i>
+<br />
 <br />
 <a href="startDigitalocean.php5">Start Server</a><br />
 <a href="snapshotDigitalocean.php5">Power off, Snapshot Server, Destroy</a> (takes a long while (5-7 min), please don't close window)<br />
-<!--<a href="stopDigitalocean.php5">Stop (&destroy) Server</a>-->
+<a href="stopDigitalocean.php5">Stop (&destroy) Server</a>
 </body>
 
 </html>

@@ -208,7 +208,9 @@ function checkDroplet(){
 
         $rstudioDropletStatus = $rstudioDropletInfo['status'];
 
-        $rstudioDropletIp = $rstudioDropletInfo['networks']['v4'][0]['ip_address'];
+        if(isset($rstudioDropletInfo['networks']['v4'])){
+            $rstudioDropletIp = $rstudioDropletInfo['networks']['v4'][0]['ip_address'];
+        }
 
 
 
