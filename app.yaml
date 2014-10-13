@@ -33,6 +33,9 @@ handlers:
 - url: /snapshotDigitalocean.php5
   script: regression_scheduler/snapshotDigitalocean.php5
 
+- url: /qlikview_document_loader/test
+  script: qlikview_document_loader/test.php
+
 
 - url: /assets/css
   static_dir: assets/css
