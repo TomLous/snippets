@@ -23,7 +23,6 @@ $mysqli = null;
 
 // loop all databases until treshold is exceeded
 while ($remaining > 0 && !$finished) {
-    global $currentDB;
 
     // loop through databases
     $mysqli = connectToNextDB($mysqli);
@@ -50,7 +49,7 @@ while ($remaining > 0 && !$finished) {
               ORDER BY b_accuracy ASC, klantnr ASC
               LIMIT 0, {$remaining}";
 
-
+// // For dev purposes
 //        $queryUnGeocodedOutlets = "SELECT klantnr, b_huisnr, b_adres, b_woonplaats, b_latitude, b_longitude, b_accuracy, land, status
 //              FROM eindverbruiker
 //              WHERE new_lat IS NULL AND b_latitude IS NOT NULL
@@ -79,13 +78,13 @@ while ($remaining > 0 && !$finished) {
 // loop outlets to geocode
 foreach ($ouletsToGeocode as $outletObj) {
     // create a API request
-    $addressString = str_replace("/","",implode(' ', array($outletObj->b_adres, $outletObj->b_huisnr_clean, $outletObj->b_woonplaats, $outletObj->land)));
+    $addressString = str_replace("/", "", implode(' ', array($outletObj->b_adres, $outletObj->b_huisnr_clean, $outletObj->b_woonplaats, $outletObj->land)));
     $geocodeFarmForwardCodingUrl = GEOCODEFARM_API_FORWARD_CODING_URL . urlencode($addressString) . '/';
 
     // retrieve & parse data
     $data = file_get_contents($geocodeFarmForwardCodingUrl);
-    if(!$data){
-        throw new Exception("Could not open URL ". $geocodeFarmForwardCodingUrl);
+    if (!$data) {
+        throw new Exception("Could not open URL " . $geocodeFarmForwardCodingUrl);
     }
 
     $jsonResult = json_decode($data, true);
@@ -108,7 +107,6 @@ foreach ($ouletsToGeocode as $outletObj) {
 // loop outlets that were succesfully geocoded
 foreach ($ouletsGeocoded as $outletObj) {
 
-//    print_r($outletObj);
 
     // translage geocodefarm accuracy to DO accuracy
     $accuracy = $outletObj->geoCodeFarmData['ADDRESS']['accuracy'];
@@ -129,7 +127,7 @@ foreach ($ouletsGeocoded as $outletObj) {
     }
 
     // only when new lat/long is better then previous one
-    if($outletObj->b_accuracy <=  $doAccuracy || !$outletObj->b_latitude ){
+    if ($outletObj->b_accuracy <= $doAccuracy || !$outletObj->b_latitude) {
 
         // create update params
         $updateOutletParameters[$outletObj->fromDB][] = array(
@@ -151,10 +149,8 @@ foreach ($ouletsNotGeocoded as $outletObj) {
 }
 
 
-print_r($updateOutletParameters);
-
 // loop queries
-foreach($updateOutletParameters as $dbName => $updateParameters){
+foreach ($updateOutletParameters as $dbName => $updateParameters) {
     $mysqli = connectToDB($dbName);
 
     $updateOutletQuery = "UPDATE eindverbruiker SET b_latitude=?, b_longitude=?, b_accuracy=? WHERE klantnr=?";
@@ -163,7 +159,7 @@ foreach($updateOutletParameters as $dbName => $updateParameters){
     $updateOutletStatement = $mysqli->prepare($updateOutletQuery);
     $updateOutletStatement->bind_param('ddis', $latitude, $longitude, $accuracy, $klantnr); // use string for klantnr, evethough most new publics use int (i)
 
-    foreach($updateParameters as $params){
+    foreach ($updateParameters as $params) {
         $latitude = $params['latitude'];
         $longitude = $params['longitude'];
         $accuracy = $params['accuracy'];
@@ -181,8 +177,9 @@ foreach($updateOutletParameters as $dbName => $updateParameters){
  * Functions
  */
 
-function cleanHuisnr($huisnr){
-    $find =array(
+function cleanHuisnr($huisnr)
+{
+    $find = array(
         '`(t/o|boven|naast|nabij)`is', // remove aanduiding
         '`(\d+)-?\s*(hs|bg|ong|bis|bov|sout|werf|sous|magazijn|lnks|wink|wkl|huis|waterzijde|achter|keld|I{1,3})`is', // remove verdieping
         '`\b(Noordzijde|Zuidzijde|Oostzijde|westzijde|NZ|ZZ|OZ|WZ|N\.Z\.|Z\.Z\.|O\.Z\.|W\.Z\.|noord|oost|zuid|west|no|nw|zo|zw|noo|zui|nrd)\b`is', // remove richting
@@ -207,7 +204,7 @@ function cleanHuisnr($huisnr){
 
     $huisnr = preg_replace($find, $replace, $huisnr);
 
-    $huisnr =  trim($huisnr);
+    $huisnr = trim($huisnr);
 
     $huisnr = $huisnr == 0 ? '' : $huisnr;
 
