@@ -31,6 +31,7 @@ class AGOLHandler
 
     const referer = "http://www.arcgis.com/";
     const apiGenerateTokenUrl = "https://www.arcgis.com/sharing/rest/generateToken";
+    const apiGenerateAdminTokenUrl = "https://www.arcgis.com/admin/generateToken";
 
 
     function __construct($username, $password, $serviceName, $featureServerUrl)
@@ -51,10 +52,10 @@ class AGOLHandler
      * getToken
      * Generates a token.
      * @param int $expiration
+     * @param bool $admin
      * @throws \Exception
-     * @internal param int $exp
      */
-    private function getToken($expiration = 60)
+    private function getToken($expiration = 60, $admin=false)
     {
 
         $query_dict = array('username' => $this->username,
@@ -89,8 +90,8 @@ class AGOLHandler
             "attributes" => array(
                 "OBJECTID" => 1,
                 "TextDate" => strftime('%m/%d/%Y %H:%MZ', $ptTime),
-                "Long" => $Y,
-                "Lat" => $X
+                "Long" => $X,
+                "Lat" => $Y
             ),
             "geometry" => array(
                 "x" => $X,
@@ -102,14 +103,16 @@ class AGOLHandler
      * This function queries the service layer end points to ensure there is geometry as the
      * script does an update on existing geometry.
      * If there are no features, a dummy point is entered.
+     * @param int $layer
+     * @throws \Exception
      */
-    public function removeGEO()
+    public function removeGEO($layer=0)
     {
         if ($this->debug) {
             print ("Removing all features from " . $this->featureServerUrl. PHP_EOL);
         }
 
-        $ptURL = $this->featureServerUrl . "/0/deleteFeatures";
+        $ptURL = $this->featureServerUrl . "/" . $layer . "/deleteFeatures";
 
         $query_dict = array(
             "f" => "json",
@@ -124,30 +127,163 @@ class AGOLHandler
         if ($this->debug) {
             print("All features from service " . $this->featureServerUrl . " deleted". PHP_EOL);
         }
+    }
 
+    /*@todo admin token needed
+    public function updateLayerDefinition($data, $layer=0){
+        $layerInfo = $this->getLayerInfo($layer);
+        $currentFields = $layerInfo['fields']; // array of field obejcts
+
+        $neededFieldNames = array_keys($data);
+        $neededFieldNames[] = 'FID'; //unique keys
+
+        $fieldsToRemove = array();
+        $fieldsToAdd = array();
+
+        foreach($data as $key=>$value){
+            if(is_scalar($value)){
+                if(is_float($value) || is_double($value)){
+                    $fieldsToAdd[$key] = array(
+                        'name' => $key,
+                        'type' =>  'esriFieldTypeDouble',
+                        'actualType' =>  'float',
+                        'alias' =>  $key,
+                        'sqlType' =>  'sqlTypeFloat',
+                        'nullable' =>  1,
+                        'editable' =>  1,
+                        'domain' =>  null,
+                        'defaultValue' =>  null,
+                    );
+                }
+                elseif(is_int($value)){
+                    $fieldsToAdd[$key] = array(
+                        'name' => $key,
+                        'type' =>  'esriFieldTypeInteger',
+                        'actualType' =>  'int',
+                        'alias' =>  $key,
+                        'sqlType' =>  'sqlTypeInteger',
+                        'nullable' =>  1,
+                        'editable' =>  1,
+                        'domain' =>  null,
+                        'defaultValue' =>  null,
+                    );
+                }else{
+                    $fieldsToAdd[$key] = array(
+                        'name' => $key,
+                        'type' =>  'esriFieldTypeString',
+                        'actualType' =>  'nvarchar',
+                        'alias' =>  $key,
+                        'sqlType' =>  'sqlTypeInteger',
+                        'length' => strlen($value) > 256 ? max(strlen($value),1024) : 256,
+                        'nullable' =>  1,
+                        'editable' =>  1,
+                        'domain' =>  null,
+                        'defaultValue' =>  null,
+                    );
+                }
+            }
+        }
+
+
+        foreach($currentFields as $num=>$field){
+            if(!in_array($field['name'], $neededFieldNames)){
+                $fieldsToRemove[]['name'] = $field['name'];
+            }elseif(isset($fieldsToAdd[$field['name']])){
+                unset($fieldsToAdd[$field['name']]);
+            }
+        }
+
+        $fieldsToAdd = array_values($fieldsToAdd);
+        print_r($fieldsToAdd);
+
+
+        $ptURL = $this->featureServerUrl .   "/" . $layer . "/addToDefinition" ;
+
+        print_r($ptURL);
+
+        $query_dict = array(
+            "f" => "json",
+            "fields" => json_encode($fieldsToAdd),
+            "token" => $this->token
+        );
+
+        print_r($query_dict);
+
+
+        $result = $this->sendAGOLRequest($ptURL , $query_dict, "JSON");
+
+        print_r($result);
+
+
+
+        print_r($fieldsToRemove);
+
+
+        $ptURL = $this->featureServerUrl .   "/" . $layer . "/deleteFromDefinition" ;
+
+        print_r($ptURL);
+
+        $query_dict = array(
+            "f" => "json",
+            "fields" => json_encode($fieldsToRemove),
+            "token" => $this->token
+        );
+
+        print_r($query_dict);
+
+
+        $result = $this->sendAGOLRequest($ptURL , $query_dict, "JSON");
+
+        print_r($result);
+
+
+
+    }*/
+
+    public function getLayerInfo($layer=0)
+    {
+        $ptURL = $this->featureServerUrl .   "/" . $layer;
+
+        $query_dict = array(
+            "f" => "json",
+            "token" => $this->token
+        );
+
+
+        $layerInfo = $this->sendAGOLRequest($ptURL . '?f=json', $query_dict, "JSON");
+
+
+
+
+        return $layerInfo;
     }
 
     /**
      * Use a URL and X/Y values to update an existing point.
      * @param $data
+     * @param int $layer
      * @throws \Exception
      * @return boolean
      */
-    public function addPoint($data)
+    public function addPoint($data, $layer=0)
     {
         $feature = json_encode($data);
 
         if ($this->debug) {
-            print ("Adding feature point ".$feature. PHP_EOL);
+            $id = current($data['attributes']);
+            $lat = $data['geometry']['y'];
+            $long = $data['geometry']['x'];
+            print ("Adding feature point $id @ [$lat, $long]". PHP_EOL);
         }
 
-        $ptURL = $this->featureServerUrl . "/0/addFeatures";
+        $ptURL = $this->featureServerUrl . "/" . $layer . "/addFeatures";
 
         $submitData = array(
             "features" => $feature,
             "f" => "json",
             "token" => $this->token
         );
+
 
 
         if (!$this->sendAGOLRequest($ptURL, $submitData, 1)) {
@@ -233,7 +369,32 @@ class AGOLHandler
         return true;
     }
 
+    /**
+     * @todo fill code
+     * fillEmptyGeo
+     */
+    public function fillEmptyGeo(){
+
+    }
+
+    /**
+     * updatePoint
+     * @todo fill code
+     * @param $X longitude
+     * @param $Y latitude
+     * @param $timestamp
+     */
+    public function updatePoint($X, $Y, $timestamp){
+
+    }
+
+    /**
+     * logError
+     * @todo wriet to file??
+     * @param $data
+     */
     private function logError($data){
+
         print("logerror " . $data. PHP_EOL);
     }
 }
