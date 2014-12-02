@@ -36,6 +36,9 @@ handlers:
 - url: /qlikview_document_loader/test
   script: qlikview_document_loader/test.php
 
+- url: /arcgisonline/import
+  script: arcgisonline/import.php5
+
 
 - url: /assets/css
   static_dir: assets/css
