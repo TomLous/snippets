@@ -6,7 +6,8 @@
  * Datetime:     02/12/14 10:29
  */
 
-include_once("lib\AGOLHandler.php5");
+include_once("config.inc.php5");
+include_once("AGOLHandler.php5");
 
 $mysqli = connectToDB();
 
@@ -37,32 +38,21 @@ $agolHandler->removeGEO();
 
 
 // Loop addresses
-$cnt = 0;
-while ($recordObj = $resultSet->fetch_object()) {
+while ($record = $resultSet->fetch_array(MYSQLI_ASSOC)) {
 
+    $latitude = $record['latitude'];
+    $longitude = $record['longitude'];
+    $wkid = 4326;
 
     $jsonData = array(
-        "attributes" => array(
-            "Land" => $recordObj->countryCode,
-            "Straat" => $recordObj->street,
-            "Nummer" => $recordObj->houseNumber,
-            "Long" => $recordObj->longitude,
-            "Lat" => $recordObj->latitude,
-            "Postcode" => $recordObj->postalCode,
-            "Opdrachtgever" => $recordObj->name,
-            "Plaats" => $recordObj->place,
-        ),
+        "attributes" => $record,
         "geometry" => array(
-            "x" => $recordObj->longitude,
-            "y" => $recordObj->latitude,
-            "spatialReference" => array("wkid" => 4326)
+            "x" => $latitude,
+            "y" => $longitude,
+            "spatialReference" => array("wkid" => $wkid)
         ));
 
     $agolHandler->addPoint($jsonData);
-    if($_ENV['DEBUG']){
-        print ($cnt+1 . " Adding feature ".$recordObj->name );
-    }
-    $cnt++;
 
 }
 

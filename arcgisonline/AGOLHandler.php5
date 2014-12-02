@@ -23,16 +23,15 @@ class AGOLHandler
     private $password;
     private $serviceName;
     private $token;
-    private $http;
+    private $ssl;
     private $expires;
     private $featureServerUrl;
 
-    private $debug = false;
+    private $debug = true;
 
     const referer = "http://www.arcgis.com/";
     const apiGenerateTokenUrl = "https://www.arcgis.com/sharing/rest/generateToken";
-    const httpPrefix = "http://www.arcgis.com/sharing/rest";
-    const httpsPrefix = "https://www.arcgis.com/sharing/rest";
+
 
     function __construct($username, $password, $serviceName, $featureServerUrl)
     {
@@ -51,36 +50,20 @@ class AGOLHandler
     /**
      * getToken
      * Generates a token.
-     * @param int $exp
+     * @param int $expiration
      * @throws \Exception
+     * @internal param int $exp
      */
-    private function getToken($exp = 60)
+    private function getToken($expiration = 60)
     {
 
         $query_dict = array('username' => $this->username,
             'password' => $this->password,
-            'referer' => self::referer);
+            'referer' => self::referer,
+            'expiration' =>$expiration );
 
 
         $data = $this->sendAGOLRequest(self::apiGenerateTokenUrl . '?f=json', $query_dict, "JSON");
-//        $query_string = http_build_query($query_dict);
-//
-//        $options =
-//            array("http" =>
-//                array(
-//                    "method" => "POST",
-//                    "header" => "Accept-language: nl\r\n" .
-//                        "Content-type: application/x-www-form-urlencoded\r\n"
-//                        . "Content-Length: " . strlen($query_string) . "\r\n",
-//                    "content" => $query_string,
-//                    "follow_location" => false
-//                )
-//            );
-//
-//        $context = stream_context_create($options);
-//        $result = file_get_contents(self::apiGenerateTokenUrl . '?f=json', false, $context);
-//
-//        $data = json_decode($result, TRUE);
 
         if (!isset($data['token'])) {
             throw new \Exception('Missing AGOL token');
@@ -88,7 +71,7 @@ class AGOLHandler
 
         $this->token = $data['token'];
         $this->expires = $data['expires'];
-        $this->http = $data['ssl'] ? self::httpsPrefix : self::httpPrefix;
+        $this->ssl = $data['ssl'];
 
     }
 
@@ -110,8 +93,8 @@ class AGOLHandler
                 "Lat" => $X
             ),
             "geometry" => array(
-                "x" => X,
-                "y" => Y
+                "x" => $X,
+                "y" => $Y
             ));
     }
 
@@ -152,17 +135,20 @@ class AGOLHandler
      */
     public function addPoint($data)
     {
+        $feature = json_encode($data);
+
         if ($this->debug) {
-            print ("Adding feature point". PHP_EOL);
+            print ("Adding feature point ".$feature. PHP_EOL);
         }
 
         $ptURL = $this->featureServerUrl . "/0/addFeatures";
 
         $submitData = array(
-            "features" => $data,
+            "features" => $feature,
             "f" => "json",
             "token" => $this->token
         );
+
 
         if (!$this->sendAGOLRequest($ptURL, $submitData, 1)) {
             $this->logError($data);
@@ -204,15 +190,15 @@ class AGOLHandler
         $context = stream_context_create($options);
         $jsonResponse = file_get_contents($URL, false, $context);
 
-        if($this->debug){
-            print($URL . PHP_EOL . var_export($context, true) . PHP_EOL . $jsonResponse . PHP_EOL );
-        }
+        /*if($this->debug){
+            print($URL . PHP_EOL . var_export($options, true) . PHP_EOL . $jsonResponse . PHP_EOL );
+        }*/
 
         $jsonOuput = json_decode($jsonResponse, TRUE);
 
 
         if ($returnType == "JSON") {
-            return jsonOuput;
+            return $jsonOuput;
         } elseif (!$returnType) {
             if (isset($jsonOuput['addResults'])) {
                 foreach ($jsonOuput['addResults'] as $item) {
