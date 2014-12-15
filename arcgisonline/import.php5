@@ -22,7 +22,7 @@ $agolHandler->setDebug($_ENV['DEBUG']);
 $query = "SELECT
               naam as `Opdrachtgever`,
               b_adres as `Straat`,
-              b_huisnr as `Nummer`,
+              b_huisnr as `Nummer1`,
               b_postcode as `Postcode`,
               b_woonplaats as `Plaats`,
               land as `Land`,
@@ -30,9 +30,9 @@ $query = "SELECT
               b_longitude as `Long`
           FROM eindverbruiker
           WHERE b_latitude IS NOT NULL
-          and b_longitude > 8.6 and b_longitude < 9.1
+          and b_longitude > 4.6 and b_longitude < 9.1
           and b_latitude > 49.6 and b_latitude < 50.1
-          LIMIT 0,100";
+          LIMIT 0,10";
 
 // fields
 $latitudeField = 'Lat';
@@ -46,7 +46,14 @@ $resultSet = $mysqli->query($query);
 $agolHandler->removeGEO();
 
 // Loop addresses
+$cnt = 0;
+
 while ($record = $resultSet->fetch_array(MYSQLI_ASSOC)) {
+
+    if($cnt == 0){
+        print_r($record);
+        $agolHandler->updateLayerDefinition($record);
+    }
 
     $latitude = $record[$latitudeField];
     $longitude = $record[$longitudeField];
@@ -61,6 +68,8 @@ while ($record = $resultSet->fetch_array(MYSQLI_ASSOC)) {
         ));
 
     $agolHandler->addPoint($jsonData);
+
+    $cnt++;
 }
 
 $resultSet->close();

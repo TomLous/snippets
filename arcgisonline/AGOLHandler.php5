@@ -129,7 +129,7 @@ class AGOLHandler
         }
     }
 
-    /*@todo admin token needed
+
     public function updateLayerDefinition($data, $layer=0){
         $layerInfo = $this->getLayerInfo($layer);
         $currentFields = $layerInfo['fields']; // array of field obejcts
@@ -193,7 +193,7 @@ class AGOLHandler
             }
         }
 
-        $fieldsToAdd = array_values($fieldsToAdd);
+        $fieldsToAdd = array("fields" => array_values($fieldsToAdd));
         print_r($fieldsToAdd);
 
 
@@ -203,7 +203,7 @@ class AGOLHandler
 
         $query_dict = array(
             "f" => "json",
-            "fields" => json_encode($fieldsToAdd),
+            "addToDefinition" => json_encode($fieldsToAdd),
             "token" => $this->token
         );
 
@@ -238,7 +238,7 @@ class AGOLHandler
 
 
 
-    }*/
+    }
 
     public function getLayerInfo($layer=0)
     {
