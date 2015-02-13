@@ -42,6 +42,12 @@ handlers:
 - url: /arcgisonline/test
   script: arcgisonline/test.php5
 
+- url: /arcgisonline/test2
+  script: arcgisonline/gis_kpi_dashboard.php5
+
+- url: /jsontocsv/sirah2015
+  script: jsontocsv/sirah2015/convert.php
+
 
 - url: /assets/css
   static_dir: assets/css

@@ -27,7 +27,7 @@ class AGOLHandler
     private $expires;
     private $featureServerUrl;
 
-    private $debug = true;
+    private $debug = false;
 
     const referer = "http://www.arcgis.com/";
     const apiGenerateTokenUrl = "https://www.arcgis.com/sharing/rest/generateToken";
@@ -70,9 +70,15 @@ class AGOLHandler
             throw new \Exception('Missing AGOL token');
         }
 
+
+
         $this->token = $data['token'];
         $this->expires = $data['expires'];
         $this->ssl = $data['ssl'];
+
+        if ($this->debug) {
+            print ("Token " . $this->token. PHP_EOL);
+        }
 
     }
 
@@ -326,9 +332,9 @@ class AGOLHandler
         $context = stream_context_create($options);
         $jsonResponse = file_get_contents($URL, false, $context);
 
-        /*if($this->debug){
+        if($this->debug){
             print($URL . PHP_EOL . var_export($options, true) . PHP_EOL . $jsonResponse . PHP_EOL );
-        }*/
+        }
 
         $jsonOuput = json_decode($jsonResponse, TRUE);
 
