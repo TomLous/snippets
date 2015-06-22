@@ -1,3 +1,4 @@
+#!/usr/local/php5-fcgi/bin/php
 <?php
 /**
  * @author      Tom Lous <tomlous@gmail.com>
@@ -11,14 +12,14 @@ $start = time();
 $tagSeparator = '⁄';
 $tagsSeparator = '⁞';
 
-$mysqli = connectToGlobalDB();
+$conn = connectToGlobalDB();
 
 $langArray = ['english', 'dutch', 'deutsch', 'french', 'spanish', 'italian', 'czech', 'polish', 'portuguese', 'hungarian'];
 
 $q = "SELECT * FROM `kenmerken_taal` WHERE `tabel`='kenmerken' AND `segmentcode`='';";
-$rs = $mysqli->query($q);
-if($mysqli->error){
-    print $mysqli->error . PHP_EOL;
+$rs = mysql_query($q, $conn);
+if(mysql_error($conn)){
+    print mysql_error($conn) . PHP_EOL;
 }
 $finalTable = array(
     'fields' =>
@@ -34,20 +35,20 @@ $finalTable = array(
 
 $distinctKennrs = array();
 $lookupTable = array();
-while ($row = $rs->fetch_assoc()) {
+while ($row = mysql_fetch_assoc($rs)) {
     $key = str_replace('K', 'kenmerk', $row['code']);
 
 
     $q2 = "SELECT DISTINCT `{$key}` as kennr FROM `eindverbruiker`;";
 //    print $q2.PHP_EOL;
-    $rs2 = $mysqli->query($q2);
-    if($mysqli->error){
-        print $mysqli->error . PHP_EOL;
+    $rs2 = mysql_query($q2, $conn);
+    if(mysql_error($conn)){
+        print mysql_error($conn) . PHP_EOL;
     }
     $row['validKeys'] = array();
     $row['validValues'] = array();
     $multiple = false;
-    while ($row2 = $rs2->fetch_assoc()) {
+    while ($row2 = mysql_fetch_assoc($rs2)) {
         $kennrs = explode(',', trim($row2['kennr']));
         $multiple = $multiple || count($kennrs) > 1;
         foreach ($kennrs as $kennr) {
@@ -82,13 +83,13 @@ $codes = "'" . implode("','", $distinctKennrs) . "'";
 $q3 = "SELECT * FROM  `kenmerken_taal` WHERE `tabel`='kennr' AND `code` IN ({$codes});";
 
 //print $q3.PHP_EOL;
-$rs3 = $mysqli->query($q3);
-if($mysqli->error){
-    print $mysqli->error . PHP_EOL;
+$rs3 = mysql_query($q3, $conn);
+if(mysql_error($conn)){
+    print mysql_error($conn) . PHP_EOL;
 }
 
 $lookupTableKennrs = array();
-while ($row3 = $rs3->fetch_assoc()) {
+while ($row3 = mysql_fetch_assoc($rs3)) {
     $kennr = trim($row3['code']);
     if ($kennr) {
 //        print PHP_EOL . $row3['waarde_english'];
@@ -446,9 +447,9 @@ $queries = $queries + $insertQueries;
 
 foreach ($queries as $q4) {
 //    print $q4 . PHP_EOL;
-    $mysqli->query($q4);
-    if($mysqli->error){
-        print $mysqli->error . PHP_EOL;
+    mysql_query($q4, $conn);
+    if(mysql_error($conn)){
+        print mysql_error($conn) . PHP_EOL;
     }
 }
 
