@@ -14,8 +14,10 @@ define('DROPLET_SSH_KEY_MARTIJN', 'ce:70:68:61:09:63:3b:f9:b2:92:f2:20:08:27:b3:
 
 include_once('inc.php5');
 
-function doDigitalOceanRequest($uri, $method='GET', $parameters=array()){
-    $jsonData = json_encode($parameters);
+function doDigitalOceanRequest($uri, $method='GET', $data=array(), $queryParams=array()){
+    $jsonData = json_encode($data);
+
+    $uri .= '?' . http_build_query($queryParams);
 
     // not using CURL, since GAE won't support it
     $opts = array(
@@ -31,16 +33,24 @@ function doDigitalOceanRequest($uri, $method='GET', $parameters=array()){
         )
     );
 
-    /*print "<br>\n<br>\ndoDigitalOceanRequest<pre>";
-    print_r('https://api.digitalocean.com/v2/'. $uri);
-    print_r($method);
-    print_r($opts);
-    print '</pre>';*/
+    if(isset($_REQUEST['debug'])) {
+        print "<br>\n<br>\ndoDigitalOceanRequest<pre>";
+        print_r('https://api.digitalocean.com/v2/' . $uri);
+        print_r($method);
+        print_r($opts);
+        print '</pre>';
+    }
 
     $context = stream_context_create($opts);
 
 // Open the file using the HTTP headers set above
     $data = file_get_contents('https://api.digitalocean.com/v2/'. $uri, false, $context);
+
+    if(isset($_REQUEST['debug'])) {
+        print "<pre>";
+        print_r(json_decode($data));
+        print "</pre>";
+    }
 
     return json_decode($data, TRUE);
 }
@@ -65,7 +75,7 @@ function getImageInfo()
 
     $matchedImages = array();
 
-    $imageResult = doDigitalOceanRequest('images');
+    $imageResult = doDigitalOceanRequest('images','GET', array(), array('private'=>'true'));
     foreach ($imageResult['images'] as $image) {
         if (preg_match("`^" . DROPLET_NAME . "`is", $image['name'])) {
             $matchedImages[$image['created_at']] = $image;
@@ -276,8 +286,9 @@ function checkOrCreateDroplet()
     $mysqli->query($updateQuery);
 
 
-
-//    print "\n<br>\n<br>" . DROPLET_NAME . " | ". $rstudioDropletId . " | " . $rstudioDropletIp . "\n<br>\n<br>";
+    if(isset($_REQUEST['debug'])) {
+        print "\n<br>\n<br>" . DROPLET_NAME . " | " . $rstudioDropletId . " | " . $rstudioDropletIp . "\n<br>\n<br>";
+    }
 
     return $success;
 }

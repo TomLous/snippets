@@ -9,17 +9,17 @@
 include('config.inc.php5');
 $tableName = 'kenmerken_tags';
 $start = time();
-$tagSeparator = '⁄';
-$tagsSeparator = '⁞';
+$tagSeparator = '»';
+$tagsSeparator = '@';
 
 $conn = connectToGlobalDB();
-
-$langArray = ['english', 'dutch', 'deutsch', 'french', 'spanish', 'italian', 'czech', 'polish', 'portuguese', 'hungarian'];
+//"en", "nl", "de", "fr", "es", "it", "pl"
+$langArray = ['english', 'dutch', 'deutsch', 'french'];//, 'spanish', 'italian', 'polish', 'czech', 'portuguese', 'hungarian'];
 
 $q = "SELECT * FROM `kenmerken_taal` WHERE `tabel`='kenmerken' AND `segmentcode`='';";
-$rs = mysql_query($q, $conn);
-if(mysql_error($conn)){
-    print mysql_error($conn) . PHP_EOL;
+$rs = $conn->query($q);
+if ($conn->error) {
+    print $conn->error . PHP_EOL;
 }
 $finalTable = array(
     'fields' =>
@@ -35,20 +35,23 @@ $finalTable = array(
 
 $distinctKennrs = array();
 $lookupTable = array();
-while ($row = mysql_fetch_assoc($rs)) {
+while ($row = $rs->fetch_assoc()) {
     $key = str_replace('K', 'kenmerk', $row['code']);
 
+    if ($DEBUG) {
+        print ">> " . $key . PHP_EOL;
+    }
 
     $q2 = "SELECT DISTINCT `{$key}` as kennr FROM `eindverbruiker`;";
 //    print $q2.PHP_EOL;
-    $rs2 = mysql_query($q2, $conn);
-    if(mysql_error($conn)){
-        print mysql_error($conn) . PHP_EOL;
+    $rs2 = $conn->query($q2);
+    if ($conn->error) {
+        print $conn->error . PHP_EOL;
     }
     $row['validKeys'] = array();
     $row['validValues'] = array();
     $multiple = false;
-    while ($row2 = mysql_fetch_assoc($rs2)) {
+    while ($row2 = $rs2->fetch_assoc()) {
         $kennrs = explode(',', trim($row2['kennr']));
         $multiple = $multiple || count($kennrs) > 1;
         foreach ($kennrs as $kennr) {
@@ -67,9 +70,9 @@ while ($row = mysql_fetch_assoc($rs)) {
     }
     $row['multiple'] = $multiple;
 
-    foreach($langArray as $lang){
-        if(isset($row['waarde_'.$lang])){
-            $row['real_key_'.$lang] = sanitzeVal($lang, $row['waarde_'.$lang]);
+    foreach ($langArray as $lang) {
+        if (isset($row['waarde_' . $lang])) {
+            $row['real_key_' . $lang] = sanitzeVal($lang, $row['waarde_' . $lang]);
         }
     }
 
@@ -77,19 +80,31 @@ while ($row = mysql_fetch_assoc($rs)) {
     $finalTable['index'][$key] = "KEY `$key` (`$key`)";
 
     $lookupTable[$key] = $row;
+
+
+}
+
+
+if ($DEBUG) {
+    print "DIST KNR: " . PHP_EOL;
+    print_r($distinctKennrs);
+
+    print "LOOKUP TABLE: " . PHP_EOL;
+    print_r($lookupTable);
+
 }
 
 $codes = "'" . implode("','", $distinctKennrs) . "'";
 $q3 = "SELECT * FROM  `kenmerken_taal` WHERE `tabel`='kennr' AND `code` IN ({$codes});";
 
 //print $q3.PHP_EOL;
-$rs3 = mysql_query($q3, $conn);
-if(mysql_error($conn)){
-    print mysql_error($conn) . PHP_EOL;
+$rs3 = $conn->query($q3);
+if ($conn->error) {
+    print $conn->error . PHP_EOL;
 }
 
 $lookupTableKennrs = array();
-while ($row3 = mysql_fetch_assoc($rs3)) {
+while ($row3 = $rs3->fetch_assoc()) {
     $kennr = trim($row3['code']);
     if ($kennr) {
 //        print PHP_EOL . $row3['waarde_english'];
@@ -138,15 +153,20 @@ while ($row3 = mysql_fetch_assoc($rs3)) {
         }
         $row3['real_from'] = $from;
         $row3['real_to'] = $to;
-        foreach($langArray as $lang){
-            if(isset($row3['waarde_'.$lang])){
-                $row3['real_val_'.$lang] = sanitzeVal($lang, $row3['waarde_'.$lang]);
+        foreach ($langArray as $lang) {
+            if (isset($row3['waarde_' . $lang])) {
+                $row3['real_val_' . $lang] = sanitzeVal($lang, $row3['waarde_' . $lang]);
             }
         }
 
 
         $lookupTableKennrs[$kennr] = $row3;
     }
+}
+
+if ($DEBUG) {
+    print "LOOKUP TABLE Kennr: " . PHP_EOL;
+    print_r($lookupTableKennrs);
 }
 
 
@@ -184,7 +204,6 @@ foreach ($lookupTable as $field => $fieldData) {
                 }
 
 
-
                 $insertFieldValues[$str] = createTag($lang, $parentVal, $childVal, $tagSeparator, $tagsSeparator);
                 $insertFieldValues[$realvalField] = $realval;
                 $insertFieldValues[$realkeyField] = $realkey;
@@ -196,7 +215,7 @@ foreach ($lookupTable as $field => $fieldData) {
 
 
             $fields = implode(', ', array_keys($insertFieldValues));
-            $values = "'" . implode("', '", array_map('mysql_real_escape_string', $insertFieldValues)) . "'";
+            $values = "'" . implode("', '", array_map(array($conn, 'real_escape_string'), $insertFieldValues)) . "'";
             $values = str_replace("''", 'NULL', $values);
 
             $insertQueries[] = "INSERT INTO `$tableName` ($fields) VALUES($values)";
@@ -205,16 +224,23 @@ foreach ($lookupTable as $field => $fieldData) {
     }
 }
 
+
+
 foreach ($langArray as $lang) {
-    $finalTable['fields']['waarde_' . $lang] = '`waarde_' . $lang . "` VARCHAR(255) NOT NULL DEFAULT ''";
+    $finalTable['fields']['waarde_' . $lang] = '`waarde_' . $lang . "` VARCHAR(255) DEFAULT ''";
     $finalTable['fields']['real_val_' . $lang] = '`real_val_' . $lang . "` VARCHAR(64)";
     $finalTable['fields']['real_key_' . $lang] = '`real_key_' . $lang . "` VARCHAR(32)";
-    $finalTable['index']['real_key_' . $lang] = 'KEY `real_key_' . $lang .'` (`real_key_' . $lang .'`)';
+    $finalTable['index']['real_key_' . $lang] = 'KEY `real_key_' . $lang . '` (`real_key_' . $lang . '`)';
+}
+
+if ($DEBUG) {
+    print "FINAL TABLE: " . PHP_EOL;
+    print_r($finalTable);
 }
 
 $queries = array(
     'DROP TABLE IF EXISTS `' . $tableName . '`;',
-    'CREATE TABLE `' . $tableName . '` (' . implode(",\n", $finalTable['fields']) . ",\n" . implode(",\n", $finalTable['index']) . ') ENGINE=MyISAM AUTO_INCREMENT=0 DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC COMMENT=\'Generated by generateKenmerkenTagsTable.php5. Do not change!\';'
+    'CREATE TABLE `' . $tableName . '` (' . implode(",\n", $finalTable['fields']) . ",\n" . implode(",\n", $finalTable['index']) . ') ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci ROW_FORMAT=DYNAMIC COMMENT=\'Generated by generateKenmerkenTagsTable.php5. Do not change!\';'
 );
 
 
@@ -266,178 +292,179 @@ function createTag($lang, $parent, $value, $sep, $masterSep)
     return $combined;
 }
 
-function sanitzeVal($lang, $val){
+function sanitzeVal($lang, $val)
+{
 //    $val = strtolower($val);
     $findReplace = array();
 
 
     switch ($lang) {
         case 'english':
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('No of ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('No. of ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote(' type','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote(' (persons)','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Kitchen-/restaurant','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Opening hours ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Opened on ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Manned/Unmanned ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Most important ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('for: ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('for: ','/')).'/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('No of ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('No. of ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote(' type', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote(' (persons)', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Kitchen-/restaurant', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Opening hours ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Opened on ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Manned/Unmanned ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Most important ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('for: ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('for: ', '/')) . '/is'] = '';
             $findReplace['/^yes$/is'] = '1';
             $findReplace['/^no$/is'] = '0';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote(' to ','/')).'/is'] = '-';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote(' till ','/')).'/is'] = '-';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote(' to ', '/')) . '/is'] = '-';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote(' till ', '/')) . '/is'] = '-';
 
             break;
         case 'dutch':
-            $findReplace['/'.str_replace(' ','\s+',preg_quote(' in m2','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Type ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Soort ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote(' (personen)','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote(':','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote(' (petrol) on ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Openingstijden ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('(evenement) ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Keuken- /Restaurant','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Geopend op ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Bemand / onbemand ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Belangrijkste ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Aantal ','/')).'/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote(' in m2', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Type ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Soort ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote(' (personen)', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote(':', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote(' (petrol) on ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Openingstijden ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('(evenement) ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Keuken- /Restaurant', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Geopend op ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Bemand / onbemand ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Belangrijkste ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Aantal ', '/')) . '/is'] = '';
             $findReplace['/^ja$/is'] = '1';
             $findReplace['/^nee$/is'] = '0';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote(' tot ','/')).'/is'] = '-';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote(' tot ', '/')) . '/is'] = '-';
             break;
         case 'deutsch':
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Anzahl ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Art des ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote(' (Tankstelle)','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('-/Zelt','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Geöffnet am ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote(' (Personen)','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote(' und/oder ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Manned/Unmanned ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote(' für die:','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Öffnungszeiten ','/')).'/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Anzahl ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Art des ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote(' (Tankstelle)', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('-/Zelt', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Geöffnet am ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote(' (Personen)', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote(' und/oder ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Manned/Unmanned ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote(' für die:', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Öffnungszeiten ', '/')) . '/is'] = '';
             $findReplace['/^ja$/is'] = '1';
             $findReplace['/^nein$/is'] = '0';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote(' bis ','/')).'/is'] = '-';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote(' bis ', '/')) . '/is'] = '-';
             break;
         case 'french':
-            $findReplace['/'.str_replace(' ','\s+',preg_quote(' salles de seminaires','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Cuisine / ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Heures d\'ouverture ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote(' pour','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote(' (manifestation)','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Nombre d\'','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Nombre de ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Ouvert le ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote(' principal/site secondaire','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Type de ','/')).'/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote(' salles de seminaires', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Cuisine / ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Heures d\'ouverture ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote(' pour', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote(' (manifestation)', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Nombre d\'', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Nombre de ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Ouvert le ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote(' principal/site secondaire', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Type de ', '/')) . '/is'] = '';
             $findReplace['/^oui$/is'] = '1';
             $findReplace['/^non$/is'] = '0';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote(' á ','/')).'/is'] = '-';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote(' á ', '/')) . '/is'] = '-';
             break;
         case 'spanish':
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Tipo de ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote(' en m2','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Puesto de ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote(':','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('nº de ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote(' (acontecimiento)','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote(' para cocinas/restaurantes','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Horas de apertura ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote(' con/sin personal','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote(' (personas)','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Abierto los ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Abastecimiento de ','/')).'/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Tipo de ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote(' en m2', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Puesto de ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote(':', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('nº de ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote(' (acontecimiento)', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote(' para cocinas/restaurantes', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Horas de apertura ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote(' con/sin personal', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote(' (personas)', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Abierto los ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Abastecimiento de ', '/')) . '/is'] = '';
             $findReplace['/^sí$/is'] = '1';
             $findReplace['/^no$/is'] = '0';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote(' a ','/')).'/is'] = '-';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('de ','/')).'/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote(' a ', '/')) . '/is'] = '-';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('de ', '/')) . '/is'] = '';
             break;
         case 'italian':
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Tipologia di ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Tipo di ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('/ superficie di vendita','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Principal ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Orari di ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('N°\s*di ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Numero di ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote(' (eventi)','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote(' per:','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote(' servito/ self service','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Cucina/ restaurant','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('di una stanza (persone)','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Aperto il ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Angolo snack/ snack caldi','/')).'/is'] = 'snack';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Tipologia di ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Tipo di ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('/ superficie di vendita', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Principal ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Orari di ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('N°\s*di ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Numero di ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote(' (eventi)', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote(' per:', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote(' servito/ self service', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Cucina/ restaurant', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('di una stanza (persone)', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Aperto il ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Angolo snack/ snack caldi', '/')) . '/is'] = 'snack';
             $findReplace['/^sì$/is'] = '1';
             $findReplace['/^no$/is'] = '0';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote(' a ','/')).'/is'] = '-';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote(' a ', '/')) . '/is'] = '-';
             break;
         case 'czech':
-            $findReplace['/'.str_replace(' ','\s+',preg_quote(' / vaří','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Hotel - Počet ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote(' / haly','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote(' for:','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('No of ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Otevírací hodiny ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Otevřeno ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Počet ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote(' type','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Typ ','/')).'/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote(' / vaří', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Hotel - Počet ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote(' / haly', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote(' for:', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('No of ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Otevírací hodiny ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Otevřeno ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Počet ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote(' type', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Typ ', '/')) . '/is'] = '';
             $findReplace['/^ano$/is'] = '1';
             $findReplace['/^ne$/is'] = '0';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote(' až ','/')).'/is'] = '-';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote(' až ', '/')) . '/is'] = '-';
             break;
         case 'polish':
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Godziny otwarcia w ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Liczba ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote(' do:','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Otwarte w ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Rodzaj ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('kuchni/restauracji ','/')).'/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Godziny otwarcia w ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Liczba ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote(' do:', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Otwarte w ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Rodzaj ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('kuchni/restauracji ', '/')) . '/is'] = '';
             $findReplace['/^tak$/is'] = '1';
             $findReplace['/^ni$/is'] = '0';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote(' do ','/')).'/is'] = '-';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote(' do ', '/')) . '/is'] = '-';
             break;
         case 'portuguese':
-            $findReplace['/'.str_replace(' ','\s+',preg_quote(':','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote(' (pessoas)','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('para: ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote(' (evento)','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Número de ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Nº de ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote(' com pessoal /sem pessoal','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Tipo de ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote(' a ','/')).'/is'] = '-';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote(':', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote(' (pessoas)', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('para: ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote(' (evento)', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Número de ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Nº de ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote(' com pessoal /sem pessoal', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Tipo de ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote(' a ', '/')) . '/is'] = '-';
             break;
         case 'hungarian':
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Étkezde ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote(' száma','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Felügyelt/Automatizált ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote(' (rendezvény)','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Konyha-/ ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Most important ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote(' típusa','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('No of ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Nyitott ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Nyitvatartási idő ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote(' type','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Počet ','/')).'/is'] = '';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Szoba/Hall Befogadókapacitás (fő)','/')).'/is'] = 'Befogadókapacitás';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('Počet ','/')).'/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Étkezde ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote(' száma', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Felügyelt/Automatizált ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote(' (rendezvény)', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Konyha-/ ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Most important ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote(' típusa', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('No of ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Nyitott ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Nyitvatartási idő ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote(' type', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Počet ', '/')) . '/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Szoba/Hall Befogadókapacitás (fő)', '/')) . '/is'] = 'Befogadókapacitás';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('Počet ', '/')) . '/is'] = '';
             $findReplace['/^igen$/is'] = '1';
             $findReplace['/^nem$/is'] = '0';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote(' až ','/')).'/is'] = '-';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('-től ','/')).'/is'] = '-';
-            $findReplace['/'.str_replace(' ','\s+',preg_quote('-ig','/')).'/is'] = '';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote(' až ', '/')) . '/is'] = '-';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('-től ', '/')) . '/is'] = '-';
+            $findReplace['/' . str_replace(' ', '\s+', preg_quote('-ig', '/')) . '/is'] = '';
             break;
 
     }
 
 
-    $val =  preg_replace(array_keys($findReplace), array_values($findReplace), $val);
+    $val = preg_replace(array_keys($findReplace), array_values($findReplace), $val);
     $val = ucwords(trim($val));
     return $val;
 
@@ -447,16 +474,13 @@ $queries = $queries + $insertQueries;
 
 foreach ($queries as $q4) {
 //    print $q4 . PHP_EOL;
-    mysql_query($q4, $conn);
-    if(mysql_error($conn)){
-        print mysql_error($conn) . PHP_EOL;
+    $conn->query($q4);
+    if ($conn->error) {
+        print $conn->error . PHP_EOL;
     }
 }
 
-
-//print (time() - $start) . ' sec' . PHP_EOL;
-//print_r($distinctKennrs);
-//print_r($lookupTable);
-//print_r($lookupTableKennrs);
-//print_r($finalTable);
-//print_r($queries);
+if($DEBUG) {
+    print (time() - $start) . ' sec' . PHP_EOL;
+    print_r($queries);
+}

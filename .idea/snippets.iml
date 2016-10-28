@@ -6,6 +6,8 @@
         <option name="rootFolder" value="$MODULE_DIR$" />
         <option name="sdkFolder" value="/Applications/GoogleAppEngineLauncher.app/Contents/Resources/GoogleAppEngine-default.bundle/Contents/Resources/google_appengine" />
         <option name="pythonPath" value="/usr/bin/python" />
+        <option name="oauth2" value="false" />
+        <option name="nocache" value="false" />
       </configuration>
     </facet>
   </component>
@@ -15,4 +17,3 @@
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
 </module>
-
