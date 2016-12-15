@@ -57,8 +57,8 @@ if($lastrun > 0){
     <meta http-equiv="refresh" content="10">
 
     <!-- concatenate and minify for production -->
-    <link rel="stylesheet" href="../assets/css/reset.css" />
-    <link rel="stylesheet" href="../assets/css/style.css" />
+    <link rel="stylesheet" href="css/reset.css" />
+    <link rel="stylesheet" href="css/style.css" />
     <title>Regression scheduler</title>
 </head>
 
