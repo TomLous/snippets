@@ -8,26 +8,32 @@
 
 include_once('inc.php5');
 include_once('digitalocean.inc.php5');
+ini_set('memory_limit', '1024M');
+set_time_limit(0);
+ob_implicit_flush(true);
+ob_end_flush();
 
 
+
+print "Snapshot request created? : "; flush(); ob_flush();
 $snapshotQueued = snapshotDroplet();
-
-print "Snapshot queued? (This process takes a while to complete. Please be patient)";
 print $snapshotQueued?'Y':'N';
+print PHP_EOL;flush(); ob_flush();
 
-sleep(60 * 5);
+print "Waiting 30 min for snapshot"; flush(); ob_flush();
+sleep(60 * 30);
 
+print "Clean up old snapshots: ";flush(); ob_flush();
 $snapshotsCleanedup = snapshotCleanup();
-
-print "Clean up old snapshots";
 print $snapshotsCleanedup?'Y':'N';
+print PHP_EOL;flush(); ob_flush();
 
 sleep(60);
 
+print "Server stopped & destoyed? ";flush(); ob_flush();
 $dropletDestroyed = destroyDroplet();
-
-print "Server stopped & destoyed? ";
 print $dropletDestroyed?'Y':'N';
+print PHP_EOL;flush(); ob_flush();
 
 
 //header('Location: '.$_SERVER['HTTP_REFERER']);
@@ -40,7 +46,7 @@ print '<h2>Image:</h2>';
 print_r($rstudioImageInfo);
 print '<h2>Create:</h2>';
 print_r($resultData);*/
-
+ob_end_flush();
 ?>
 <!--<br />-->
 <!--<br />-->
