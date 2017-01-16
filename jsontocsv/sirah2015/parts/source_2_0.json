@@ -1,0 +1,15 @@
+{
+		"order":[
+			"id",
+			"login",
+			"password",
+			"civility",
+			"firstname",
+			"lastname",
+			"email",
+			"phone",
+			"role",
+			"company"],
+		"model":"User",
+		"data":[
+			]}

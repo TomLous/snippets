@@ -1,0 +1,13 @@
+{
+		"order":[
+			"id",
+			"title",
+			"parent_id",
+			"services_counter"],
+		"model":"ServiceCategory",
+		"data":{
+			"1":[
+				1,
+				"Services",
+				null,
+				8]}}

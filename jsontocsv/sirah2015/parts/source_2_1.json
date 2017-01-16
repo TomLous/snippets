@@ -1,0 +1,30 @@
+{
+		"order":[
+			"id",
+			"title"],
+		"model":"Service",
+		"data":{
+			"1":[
+				1,
+				"Infirmerie"],
+			"2":[
+				2,
+				"Toilettes"],
+			"3":[
+				3,
+				"Vestiaires"],
+			"4":[
+				4,
+				"Restaurants"],
+			"5":[
+				5,
+				"Distributeurs"],
+			"6":[
+				6,
+				"Point rencontre covoiturage"],
+			"7":[
+				7,
+				"Caisses parking"],
+			"8":[
+				8,
+				"Info Lyon tourisme"]}}
