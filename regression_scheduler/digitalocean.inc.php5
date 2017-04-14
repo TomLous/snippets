@@ -7,7 +7,7 @@
  */
 define('DROPLET_NAME', 'rstudio');
 define('DROPLET_REGION', 'ams3');
-define('DROPLET_SIZE', '4gb');
+define('DROPLET_SIZE', '16gb');
 
 define('DROPLET_SSH_KEY_TOM', '0a:ac:f2:e6:60:41:b5:50:98:78:dd:ef:31:5a:ed:de'); // fingerprint ( ssh-keygen -lf ~/.ssh/id_rsa.pub )
 define('DROPLET_SSH_KEY_MARTIJN', 'ce:70:68:61:09:63:3b:f9:b2:92:f2:20:08:27:b3:84'); // fingerprint ( ssh-keygen -lf ~/.ssh/id_rsa.pub )
